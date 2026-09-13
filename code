@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vocab Tutor — Learn words by voice</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/tabler-icons.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --s0:#f4f4f2;--s1:#eaeae8;--s2:#fff;
+  --tp:#1a1a18;--ts:#6b6b66;--tm:#9a9a94;
+  --ta:#185fa5;--tpro:#533db7;--tok:#0f6e56;--terr:#a32d2d;--twrn:#854f0b;
+  --bd:rgba(0,0,0,.1);--bds:rgba(0,0,0,.18);
+  --bda:#b5d4f4;--bdok:#9fe1cb;--bderr:#f7c1c1;
+  --bga:#e6f1fb;--bgpro:#eeedfe;--bgok:#e1f5ee;--bgerr:#fcebeb;--bgwrn:#faeeda;
+  --acc:#378add;--on-acc:#fff;
+  --rad:8px;--sans:system-ui,-apple-system,sans-serif
+}
+@media(prefers-color-scheme:dark){:root{
+  --s0:#1c1c1a;--s1:#252523;--s2:#2e2e2b;
+  --tp:#f0f0ec;--ts:#a8a8a2;--tm:#6b6b66;
+  --ta:#85b7eb;--tpro:#afa9ec;--tok:#5dcaa5;--terr:#f09595;--twrn:#ef9f27;
+  --bd:rgba(255,255,255,.1);--bds:rgba(255,255,255,.18);
+  --bda:#185fa5;--bdok:#0f6e56;--bderr:#993c1d;
+  --bga:#0c447c;--bgpro:#3c3489;--bgok:#085041;--bgerr:#791f1f;--bgwrn:#633806;
+  --acc:#378add;--on-acc:#fff
+}}
+body{font-family:var(--sans);background:var(--s0);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;color:var(--tp)}
+.app{max-width:580px;width:100%}
+
+/* header */
+.hdr{text-align:center;margin-bottom:1.75rem}
+.hdr h1{font-size:28px;font-weight:500;letter-spacing:-.5px;color:var(--tp)}
+.hdr p{font-size:14px;color:var(--ts);margin-top:5px}
+
+/* topic pills */
+.topics{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:1.5rem}
+.tpill{padding:6px 15px;border-radius:20px;border:.5px solid var(--bds);background:var(--s2);color:var(--ts);font-size:13px;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.tpill:hover{background:var(--s1);color:var(--tp)}
+.tpill.on{background:var(--bga);color:var(--ta);border-color:var(--bda)}
+
+/* word card */
+.card{background:var(--s2);border:.5px solid var(--bd);border-radius:18px;padding:2rem 1.75rem;text-align:center;margin-bottom:1.25rem;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .3s}
+.card.flash-ok {border-color:var(--bdok);background:var(--bgok)}
+.card.flash-err{border-color:var(--bderr);background:var(--bgerr)}
+.clabel{font-size:11px;color:var(--tm);letter-spacing:.6px;font-weight:500;margin-bottom:10px}
+.cword{font-size:36px;font-weight:500;letter-spacing:-.5px;color:var(--tp);margin-bottom:6px}
+.cphon{font-size:14px;color:var(--ts);font-style:italic;margin-bottom:14px}
+.cpos{display:inline-block;padding:3px 11px;border-radius:12px;background:var(--bgpro);color:var(--tpro);font-size:12px;font-weight:500;margin-bottom:14px}
+.cdef{font-size:15px;color:var(--ts);line-height:1.65;max-width:430px}
+.cex{font-size:13px;color:var(--tm);line-height:1.55;margin-top:12px;font-style:italic;border-left:2px solid var(--bda);padding-left:12px;text-align:left}
+.csyns{font-size:12px;color:var(--tm);margin-top:10px}
+.cmnem{font-size:13px;color:var(--ts);margin-top:10px;padding:8px 12px;background:var(--s1);border-radius:var(--rad);text-align:left;line-height:1.5}
+
+/* quiz mode overlay on card */
+.quiz-prompt{font-size:16px;color:var(--ts);line-height:1.6;margin-bottom:14px}
+.quiz-input{width:100%;padding:10px 14px;border-radius:var(--rad);border:.5px solid var(--bds);background:var(--s1);color:var(--tp);font-size:15px;font-family:var(--sans);outline:none;text-align:center}
+.quiz-input:focus{border-color:var(--acc)}
+.quiz-feedback{font-size:14px;font-weight:500;margin-top:10px}
+.quiz-feedback.ok {color:var(--tok)}
+.quiz-feedback.err{color:var(--terr)}
+
+/* status */
+.sbar{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding:10px 14px;border-radius:var(--rad);background:var(--s1);border:.5px solid var(--bd);min-height:44px}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--bds);flex-shrink:0;transition:background .2s}
+.sdot.listen{background:#e24b4a;animation:blink 1.1s infinite}
+.sdot.speak {background:var(--acc);animation:blink 1.1s infinite}
+.sdot.think {background:#ef9f27;animation:blink 1.1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.stxt{font-size:13px;color:var(--ts);flex:1}
+
+/* chat log */
+.log{background:var(--s1);border-radius:10px;padding:.875rem;margin-bottom:1rem;max-height:140px;overflow-y:auto;display:none;flex-direction:column;gap:8px}
+.lmsg{font-size:13px;line-height:1.5}
+.lmsg.ag{color:var(--ta)}
+.lmsg.us{color:var(--tp)}
+.lmsg b{font-weight:500}
+
+/* voice commands hint */
+.hints{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem}
+.hint{font-size:11px;padding:4px 10px;border-radius:12px;background:var(--s1);color:var(--tm);border:.5px solid var(--bd)}
+
+/* controls */
+.ctrls{display:flex;gap:10px;margin-bottom:1.25rem}
+.btnp{flex:1;padding:12px;border-radius:10px;border:none;background:var(--acc);color:var(--on-acc);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btnp:hover{opacity:.88}
+.btnp:disabled{opacity:.38;cursor:not-allowed}
+.btns{padding:12px 16px;border-radius:10px;border:.5px solid var(--bds);background:var(--s2);color:var(--tp);font-size:14px;cursor:pointer;font-family:var(--sans);transition:background .15s}
+.btns:hover{background:var(--s1)}
+
+/* progress */
+.pgrow{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem}
+.pglbl{font-size:12px;color:var(--tm);min-width:70px}
+.pgbar{flex:1;height:5px;background:var(--s1);border-radius:3px;overflow:hidden}
+.pgfil{height:100%;background:var(--acc);border-radius:3px;transition:width .4s}
+
+/* score chips */
+.srow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}
+.chip{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;background:var(--s1);color:var(--ts);border:.5px solid var(--bd)}
+.chip.ok {background:var(--bgok);color:var(--tok);border-color:var(--bdok)}
+.chip.err{background:var(--bgerr);color:var(--terr);border-color:var(--bderr)}
+
+/* no-speech banner */
+.nospeech{padding:.875rem 1rem;background:var(--bgwrn);border-radius:var(--rad);color:var(--twrn);font-size:13px;margin-bottom:1rem;text-align:center;display:none}
+
+/* help modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:1rem}
+.overlay.open{display:flex}
+.modal{background:var(--s2);border-radius:16px;padding:1.75rem;max-width:440px;width:100%;border:.5px solid var(--bd)}
+.modal h2{font-size:17px;font-weight:500;margin-bottom:1rem}
+.modal ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.modal li{font-size:13px;color:var(--ts);line-height:1.5;padding:8px 12px;background:var(--s1);border-radius:var(--rad)}
+.modal li b{color:var(--tp);font-weight:500}
+.modal-close{margin-top:1.25rem;width:100%;padding:10px;border-radius:var(--rad);border:.5px solid var(--bds);background:transparent;color:var(--tp);font-size:14px;cursor:pointer;font-family:var(--sans)}
+.modal-close:hover{background:var(--s1)}
+
+/* shimmer */
+.shim{animation:shim 1.4s infinite}
+@keyframes shim{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="hdr">
+  <h1>Vocab tutor</h1>
+  <p>Learn words by voice — no account, no internet needed</p>
+</div>
+
+<div class="nospeech" id="nospeech">
+  Voice isn't supported in this browser. Try Chrome or Edge for the full experience — or type answers in quiz mode.
+</div>
+
+<div class="topics" id="topics">
+  <button class="tpill on" data-t="all">All</button>
+  <button class="tpill" data-t="academic">Academic</button>
+  <button class="tpill" data-t="business">Business</button>
+  <button class="tpill" data-t="literary">Literary</button>
+  <button class="tpill" data-t="science">Science</button>
+  <button class="tpill" data-t="everyday">Everyday</button>
+</div>
+
+<div class="card" id="card">
+  <div class="clabel">tap "new word" to start</div>
+  <div class="cword shim" id="cword">—</div>
+  <div class="cphon" id="cphon"></div>
+  <div class="cpos" id="cpos" style="display:none"></div>
+  <div class="cdef" id="cdef">Pick a topic and press "New word" to begin.</div>
+  <div class="cex"  id="cex"  style="display:none"></div>
+  <div class="csyns" id="csyns" style="display:none"></div>
+  <div class="cmnem" id="cmnem" style="display:none"></div>
+</div>
+
+<!-- quiz overlay inside card (shown programmatically) -->
+<div id="quiz-area" style="display:none;width:100%">
+  <div class="card" id="quiz-card" style="min-height:180px">
+    <div class="clabel">quiz time</div>
+    <div class="quiz-prompt" id="qprompt"></div>
+    <input class="quiz-input" id="qinput" type="text" placeholder="Type your answer…" autocomplete="off"/>
+    <div class="quiz-feedback" id="qfb"></div>
+  </div>
+</div>
+
+<div class="sbar">
+  <div class="sdot" id="sdot"></div>
+  <div class="stxt" id="stxt">Ready</div>
+</div>
+
+<div class="log" id="log"></div>
+
+<div class="hints" id="hints" style="display:none">
+  <span class="hint">say "quiz me"</span>
+  <span class="hint">say "example"</span>
+  <span class="hint">say "synonyms"</span>
+  <span class="hint">say "memory tip"</span>
+  <span class="hint">say "repeat"</span>
+  <span class="hint">say "next word"</span>
+</div>
+
+<div class="ctrls">
+  <button class="btnp" id="btnmic" disabled>
+    <i class="ti ti-microphone"></i> Ask something
+  </button>
+  <button class="btns" id="btnnew">New word</button>
+  <button class="btns" id="btnspk" style="display:none" title="Repeat word">
+    <i class="ti ti-volume"></i>
+  </button>
+  <button class="btns" id="btnhelp" title="Voice commands">
+    <i class="ti ti-help"></i>
+  </button>
+</div>
+
+<div class="pgrow">
+  <div class="pglbl" id="pglbl">0% correct</div>
+  <div class="pgbar"><div class="pgfil" id="pgfil" style="width:0%"></div></div>
+</div>
+
+<div class="srow">
+  <div class="chip ok"  id="cok">✓ 0 correct</div>
+  <div class="chip err" id="cerr">✗ 0 wrong</div>
+  <div class="chip"     id="cstr">🔥 0 streak</div>
+  <div class="chip"     id="ctot">📚 0 seen</div>
+</div>
+
+</div><!-- /app -->
+
+<!-- help modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>Voice commands</h2>
+    <ul>
+      <li><b>"New word"</b> — fetch the next vocabulary word</li>
+      <li><b>"Quiz me"</b> — test yourself on the current word</li>
+      <li><b>"Give me an example"</b> — hear another example sentence</li>
+      <li><b>"Synonyms"</b> — hear related words</li>
+      <li><b>"Memory tip"</b> — get a mnemonic to remember the word</li>
+      <li><b>"Repeat"</b> — hear the word and definition again</li>
+      <li><b>"What does it mean?"</b> — hear the definition</li>
+      <li><b>"How do you spell it?"</b> — hear the spelling</li>
+      <li><b>"Next word"</b> — skip to a new word</li>
+    </ul>
+    <button class="modal-close" id="mclose">Got it</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   VOCABULARY BANK  — 120 words across 6 topics
+   Zero API calls. Fully offline.
+═══════════════════════════════════════════════════ */
+const WORDS = [
+/* ACADEMIC */
+{t:"academic",w:"Ephemeral",ph:"/ɪˈfem.ər.əl/",pos:"adjective",def:"Lasting for a very short time; transitory.",ex:"The cherry blossoms are ephemeral, fading within days of blooming.",syns:"fleeting, transient, momentary",mem:"'E-fem-eral' — think of a female butterfly, alive for just one brief season."},
+{t:"academic",w:"Ubiquitous",ph:"/juːˈbɪk.wɪ.təs/",pos:"adjective",def:"Present, appearing, or found everywhere.",ex:"Smartphones have become ubiquitous in modern society.",syns:"omnipresent, pervasive, universal",mem:"'You-bick-witous' — YOU can't escape it, it's everywhere!"},
+{t:"academic",w:"Pragmatic",ph:"/præɡˈmæt.ɪk/",pos:"adjective",def:"Dealing with things sensibly and realistically, rather than theoretically.",ex:"We need a pragmatic solution, not an idealistic one.",syns:"practical, realistic, sensible",mem:"A PRAGMATIC person always asks: will this actually work in PRACTICE?"},
+{t:"academic",w:"Ambiguous",ph:"/æmˈbɪɡ.ju.əs/",pos:"adjective",def:"Open to more than one interpretation; not clear or decided.",ex:"The contract contained several ambiguous clauses that led to disputes.",syns:"vague, unclear, equivocal",mem:"AMBIguous — it could go THIS way OR THAT way, like an ambi-dextrous person."},
+{t:"academic",w:"Paradigm",ph:"/ˈpær.ə.daɪm/",pos:"noun",def:"A typical example or pattern of something; a model or framework.",ex:"The discovery of DNA was a paradigm shift in biology.",syns:"model, framework, archetype",mem:"PARA-DIME — picture a pair of dimes as the perfect example of a coin."},
+{t:"academic",w:"Empirical",ph:"/ɪmˈpɪr.ɪ.kəl/",pos:"adjective",def:"Based on observation or experience rather than theory or logic.",ex:"The scientist demanded empirical evidence before accepting the hypothesis.",syns:"observational, experiential, verifiable",mem:"EMPIRE of facts — an emperor only trusts what he can see with his own eyes."},
+{t:"academic",w:"Synthesis",ph:"/ˈsɪn.θɪ.sɪs/",pos:"noun",def:"The combination of ideas to form a new theory or system.",ex:"Her thesis was a synthesis of economics and psychology.",syns:"combination, integration, fusion",mem:"SYNthesis — SYN means together, like synchronise. Bringing things together."},
+{t:"academic",w:"Didactic",ph:"/daɪˈdæk.tɪk/",pos:"adjective",def:"Intended to teach, particularly in a moralistic way.",ex:"The novel has a didactic tone, constantly moralising about virtue.",syns:"instructive, educational, preachy",mem:"DID-ACT-IC — the teacher DID ACT to teach you something."},
+{t:"academic",w:"Nuanced",ph:"/ˈnjuː.ɑːnst/",pos:"adjective",def:"Characterised by subtle distinctions or variations; finely detailed.",ex:"Her nuanced analysis captured complexity others had overlooked.",syns:"subtle, refined, delicate",mem:"NEW-anced — a NEW shade of meaning, very subtle."},
+{t:"academic",w:"Dichotomy",ph:"/daɪˈkɒt.ə.mi/",pos:"noun",def:"A division into two contrasting groups or sets of opinions.",ex:"There is a false dichotomy between tradition and innovation.",syns:"division, split, contrast",mem:"DI-CHOTOMY — DI means two, like bicycle. A split into two."},
+{t:"academic",w:"Pedagogy",ph:"/ˈped.ə.ɡɒ.dʒi/",pos:"noun",def:"The art, science, or profession of teaching.",ex:"Modern pedagogy emphasises active learning over passive memorisation.",syns:"teaching, instruction, education",mem:"PEDA-GOGY — think of a PEDESTRIAN going step-by-step to guide students."},
+{t:"academic",w:"Esoteric",ph:"/ˌes.əˈter.ɪk/",pos:"adjective",def:"Intended for or understood by only a small group of specialists.",ex:"The professor's research was too esoteric for the general public.",syns:"obscure, arcane, abstruse",mem:"ESO-TERIC — only the INNER circle understands it (inward = eso)."},
+{t:"academic",w:"Rhetoric",ph:"/ˈret.ər.ɪk/",pos:"noun",def:"Persuasive language, especially used in public speaking or writing.",ex:"His speech was full of rhetoric but lacked concrete policy.",syns:"oratory, eloquence, persuasion",mem:"RHETO-RIC — think of a RHET-ORICAL question: it sounds good but means little."},
+{t:"academic",w:"Cognition",ph:"/kɒɡˈnɪʃ.ən/",pos:"noun",def:"The mental process of acquiring knowledge through thought and experience.",ex:"Sleep is essential for healthy cognition and memory consolidation.",syns:"thinking, perception, understanding",mem:"COG-NITION — a COG in the brain machine, turning thoughts into knowledge."},
+{t:"academic",w:"Axiom",ph:"/ˈæk.si.əm/",pos:"noun",def:"A statement regarded as self-evidently true, used as a starting point.",ex:"'All men are mortal' is a classic axiom of logic.",syns:"principle, truth, maxim",mem:"AX-IOM — an AXE is obviously sharp; an axiom is obviously true."},
+/* BUSINESS */
+{t:"business",w:"Leverage",ph:"/ˈlev.ər.ɪdʒ/",pos:"noun",def:"The use of borrowed capital or strategic advantage to increase potential return.",ex:"The startup used its brand leverage to secure a better deal.",syns:"influence, power, advantage",mem:"A LEVER-age gives you mechanical advantage — use a small force, get a big result."},
+{t:"business",w:"Synergy",ph:"/ˈsɪn.ər.dʒi/",pos:"noun",def:"The combined effect of two entities working together that exceeds their individual effects.",ex:"The merger created synergy that reduced costs for both companies.",syns:"cooperation, collaboration, combined effect",mem:"SYN-ERGY — SYN means together; ENERGY combined is greater than separate."},
+{t:"business",w:"Scalable",ph:"/ˈskeɪ.lə.bəl/",pos:"adjective",def:"Capable of being changed in size or scale; able to grow without proportional cost increase.",ex:"They built a scalable cloud infrastructure that handled ten times the traffic.",syns:"expandable, adaptable, flexible",mem:"SCALE-able — you can tip the SCALES up or down without breaking the system."},
+{t:"business",w:"Pivot",ph:"/ˈpɪv.ɪt/",pos:"verb",def:"To change a company's direction or strategy in response to market feedback.",ex:"After poor sales, they pivoted from B2C to a B2B model.",syns:"shift, redirect, reorient",mem:"Like a basketball player PIVOTING on one foot to face a new direction."},
+{t:"business",w:"Due diligence",ph:"/djuː ˈdɪl.ɪ.dʒəns/",pos:"noun",def:"Thorough investigation and research done before signing an agreement or making a decision.",ex:"Investors conducted three months of due diligence before acquiring the firm.",syns:"research, investigation, scrutiny",mem:"DUE DILIGENCE — it's your DUTY to be DILIGENT before you commit."},
+{t:"business",w:"Disruptive",ph:"/dɪsˈrʌp.tɪv/",pos:"adjective",def:"Causing radical change to an existing industry or market through innovation.",ex:"Uber's disruptive model challenged the traditional taxi industry.",syns:"revolutionary, innovative, transformative",mem:"DIS-RUPTIVE — it RUPTURES (breaks apart) the old way of doing things."},
+{t:"business",w:"Equity",ph:"/ˈek.wɪ.ti/",pos:"noun",def:"The value of shares issued by a company; or ownership interest after debts are paid.",ex:"She negotiated for 5% equity instead of a higher salary.",syns:"ownership, stake, shares",mem:"EQU-ITY — EQUAL share; equity means your equal piece of the pie."},
+{t:"business",w:"Iterate",ph:"/ˈɪt.ər.eɪt/",pos:"verb",def:"To repeat a process in order to generate a sequence of improving outcomes.",ex:"The design team iterated on the prototype weekly based on user feedback.",syns:"refine, repeat, improve",mem:"IT-ER-ATE — IT goes around and around, each time getting better."},
+{t:"business",w:"Benchmark",ph:"/ˈbentʃ.mɑːk/",pos:"noun",def:"A standard point of reference used for comparison or measurement.",ex:"The new product exceeded the industry benchmark for energy efficiency.",syns:"standard, measure, reference point",mem:"A surveyor's BENCH MARK was a notch cut into stone as a reference point for measurements."},
+{t:"business",w:"Agile",ph:"/ˈædʒ.aɪl/",pos:"adjective",def:"Relating to an iterative approach to project management and software development.",ex:"The agile team delivered working software in two-week sprints.",syns:"flexible, adaptive, nimble",mem:"AGILE — like a gymnast, quick to change direction and adapt to new demands."},
+{t:"business",w:"Runway",ph:"/ˈrʌn.weɪ/",pos:"noun",def:"The length of time a startup can operate before running out of funding.",ex:"With the new investment, the company extended its runway to 18 months.",syns:"operating period, cash reserve, timeframe",mem:"Like a plane on a RUNWAY — you need enough space to gain speed before takeoff or you crash."},
+{t:"business",w:"Churn",ph:"/tʃɜːn/",pos:"noun",def:"The rate at which customers stop using a product or service.",ex:"High churn signalled that the app wasn't solving a real problem.",syns:"attrition, dropout rate, turnover",mem:"Like CHURNING butter — customers who leave are 'churned out' of your base."},
+{t:"business",w:"Traction",ph:"/ˈtræk.ʃən/",pos:"noun",def:"Early evidence of market adoption and momentum for a product or startup.",ex:"The app gained traction quickly, hitting 10,000 users in the first month.",syns:"momentum, adoption, progress",mem:"TRACTION — like tyres gripping the road; your business is getting a grip on the market."},
+{t:"business",w:"Stakeholder",ph:"/ˈsteɪk.həʊl.dər/",pos:"noun",def:"A person with an interest or concern in a business or project.",ex:"All stakeholders were invited to the product roadmap review.",syns:"interested party, shareholder, participant",mem:"Someone who holds a STAKE in the outcome — like a gambler with money on the table."},
+{t:"business",w:"ROI",ph:"/ɑːr.əʊˈaɪ/",pos:"noun",def:"Return on Investment; the benefit gained relative to cost.",ex:"The marketing campaign delivered an ROI of 300% in six months.",syns:"return, profit, yield",mem:"ROI — did you get your money back, and then some? That's your Return On Investment."},
+/* LITERARY */
+{t:"literary",w:"Melancholy",ph:"/ˈmel.ən.kɒl.i/",pos:"noun",def:"A feeling of pensive sadness, typically with no obvious cause.",ex:"A deep melancholy settled over him as autumn faded into winter.",syns:"sadness, gloom, sorrow",mem:"MEL-AN-CHOLY — think of a melancholic melody that makes you feel wistfully sad."},
+{t:"literary",w:"Solitude",ph:"/ˈsɒl.ɪ.tjuːd/",pos:"noun",def:"The state of being alone, often experienced as peaceful rather than lonely.",ex:"She retreated to the mountains to enjoy complete solitude.",syns:"seclusion, isolation, aloneness",mem:"SOL-ITUDE — SOLO + attitude; choosing to be alone with a peaceful state of mind."},
+{t:"literary",w:"Eloquent",ph:"/ˈel.ə.kwənt/",pos:"adjective",def:"Fluent or persuasive in speaking or writing; clearly expressing ideas.",ex:"Her eloquent speech moved the entire audience to tears.",syns:"articulate, expressive, fluent",mem:"ELOQUE-NT — think of someone who speaks with great ELOQUENCE, flowing words."},
+{t:"literary",w:"Nostalgia",ph:"/nɒˈstæl.dʒə/",pos:"noun",def:"A sentimental longing for the past, typically for a happy time.",ex:"Looking at old photographs filled him with a deep nostalgia.",syns:"yearning, wistfulness, longing",mem:"NOSTALGIA — NOSTROS (homecoming) + ALGOS (pain). The pain of wanting to return home."},
+{t:"literary",w:"Catharsis",ph:"/kəˈθɑː.sɪs/",pos:"noun",def:"The process of releasing strong emotions through art, drama, or conversation.",ex:"Crying through the film provided a catharsis she didn't know she needed.",syns:"release, purging, relief",mem:"CATH-ARSIS — CATHETER drains the body; catharsis drains your pent-up emotions."},
+{t:"literary",w:"Hubris",ph:"/ˈhjuː.brɪs/",pos:"noun",def:"Excessive pride or self-confidence, especially leading to downfall.",ex:"The CEO's hubris blinded him to the company's fatal flaws.",syns:"arrogance, conceit, overconfidence",mem:"HUE-BRIS — picture someone so full of pride they are HUGE in their own mind."},
+{t:"literary",w:"Epiphany",ph:"/ɪˈpɪf.ə.ni/",pos:"noun",def:"A moment of sudden revelation or insight.",ex:"Standing in the shower, she had an epiphany about solving the problem.",syns:"revelation, insight, realisation",mem:"E-PIF-ANY — like a light going on. PIFF! Suddenly you understand everything."},
+{t:"literary",w:"Laconic",ph:"/ləˈkɒn.ɪk/",pos:"adjective",def:"Using very few words; brief and concise in expression.",ex:"His laconic reply — just 'fine' — revealed nothing of his feelings.",syns:"brief, concise, terse",mem:"LA-CONIC — from Laconia (Sparta). Spartans were famous for speaking very few, very tough words."},
+{t:"literary",w:"Euphoria",ph:"/juːˈfɔː.ri.ə/",pos:"noun",def:"A feeling of intense happiness and excitement.",ex:"The crowd was swept up in euphoria after the team's last-minute victory.",syns:"elation, ecstasy, joy",mem:"EU-PHORIA — EU means 'good' (like euphemism). PHORIA = carrying. You're carried on a wave of goodness."},
+{t:"literary",w:"Protagonist",ph:"/prəˈtæɡ.ə.nɪst/",pos:"noun",def:"The main character in a story; an advocate for a cause.",ex:"The protagonist's journey from poverty to success drives the plot.",syns:"hero, lead character, main character",mem:"PROTO-AGONIST — PROTO = first, AGONIST = contestant. The FIRST fighter in the story."},
+{t:"literary",w:"Allegory",ph:"/ˈæl.ə.ɡər.i/",pos:"noun",def:"A story with a hidden meaning, typically a moral or political one.",ex:"Animal Farm is an allegory for the Soviet Union's rise to power.",syns:"parable, fable, metaphor",mem:"ALL-EGORY — ALL the characters stand for something else. Every element carries another meaning."},
+{t:"literary",w:"Ambivalent",ph:"/æmˈbɪv.ə.lənt/",pos:"adjective",def:"Having mixed feelings or contradictory ideas about something.",ex:"She was ambivalent about accepting the promotion, excited yet anxious.",syns:"uncertain, undecided, conflicted",mem:"AMBI-VALENT — AMBI means both (ambidextrous). You value BOTH sides equally — can't choose!"},
+{t:"literary",w:"Poignant",ph:"/ˈpɔɪ.njənt/",pos:"adjective",def:"Evoking a keen sense of sadness or regret; deeply moving.",ex:"The final scene was so poignant that half the audience was in tears.",syns:"moving, touching, affecting",mem:"POINT-gnant — it POINTS right at your heart and stings you with emotion."},
+{t:"literary",w:"Verbose",ph:"/vɜːˈbəʊs/",pos:"adjective",def:"Using more words than needed; wordy.",ex:"His verbose essay could have made its point in half the words.",syns:"wordy, long-winded, prolix",mem:"VERB-OSE — too many VERBS and words; an overdose (VERB-DOSE) of language."},
+{t:"literary",w:"Whimsical",ph:"/ˈwɪm.zɪ.kəl/",pos:"adjective",def:"Playfully quaint or fanciful, especially in an appealing way.",ex:"The children's book had a whimsical style that delighted adults too.",syns:"playful, fanciful, quirky",mem:"WHIM-SICAL — following your WHIMS; doing something just because a fancy takes you."},
+/* SCIENCE */
+{t:"science",w:"Entropy",ph:"/ˈen.trə.pi/",pos:"noun",def:"A measure of disorder or randomness in a system; the tendency toward disorder.",ex:"Without maintenance, entropy causes all complex systems to degrade over time.",syns:"disorder, chaos, randomness",mem:"ENTER-PY — entropy ENTERS and mixes everything up until it's all random."},
+{t:"science",w:"Osmosis",ph:"/ɒzˈməʊ.sɪs/",pos:"noun",def:"Movement of a solvent through a membrane from a less concentrated to a more concentrated solution.",ex:"Plants absorb water from the soil through osmosis.",syns:"diffusion, absorption, permeation",mem:"OS-MOSIS — OS sounds like 'across.' Water moves ACROSS a membrane to balance things."},
+{t:"science",w:"Catalyst",ph:"/ˈkæt.ə.lɪst/",pos:"noun",def:"A substance that speeds up a reaction without being consumed; or a person who causes change.",ex:"The policy change acted as a catalyst for widespread reform.",syns:"accelerator, trigger, agent",mem:"CAT-ALYST — a CAT always seems to start chaos without getting involved. A catalyst starts the reaction."},
+{t:"science",w:"Inertia",ph:"/ɪˈnɜː.ʃə/",pos:"noun",def:"The tendency of an object to resist change in its state of motion; reluctance to change.",ex:"Corporate inertia prevented the company from adapting to market changes.",syns:"resistance, sluggishness, immobility",mem:"IN-ERTIA — IN-ERT means doing nothing. Inertia keeps things doing nothing (or keeps moving things moving)."},
+{t:"science",w:"Hypothesis",ph:"/haɪˈpɒθ.ɪ.sɪs/",pos:"noun",def:"A proposed explanation made as a starting point for further investigation.",ex:"The scientist tested the hypothesis that caffeine improves memory.",syns:"theory, supposition, proposition",mem:"HYPO-THESIS — HYPO means under. A hypothesis is the UNDER-pinning theory you haven't proved yet."},
+{t:"science",w:"Symbiosis",ph:"/ˌsɪm.baɪˈəʊ.sɪs/",pos:"noun",def:"A mutually beneficial relationship between different organisms or entities.",ex:"Clownfish and sea anemones have a famous symbiotic relationship.",syns:"mutualism, interdependence, partnership",mem:"SYM-BIO-SIS — SYM means together, BIO means life. Living together for mutual benefit."},
+{t:"science",w:"Kinetic",ph:"/kɪˈnet.ɪk/",pos:"adjective",def:"Relating to or resulting from motion; of or producing movement.",ex:"A roller coaster converts potential energy into kinetic energy as it descends.",syns:"dynamic, moving, active",mem:"KINE-TIC — CINEMA is moving pictures. Kinetic means relating to movement."},
+{t:"science",w:"Equilibrium",ph:"/ˌiː.kwɪˈlɪb.ri.əm/",pos:"noun",def:"A state of balance between opposing forces or processes.",ex:"The ecosystem reached a new equilibrium after the invasive species was removed.",syns:"balance, stability, parity",mem:"EQUI-LIB-RIUM — EQUAL LIBRA (the scales). Perfect balance like the scales of justice."},
+{t:"science",w:"Quantum",ph:"/ˈkwɒn.təm/",pos:"noun",def:"The minimum discrete amount of a physical entity involved in an interaction.",ex:"A photon is a quantum of light energy.",syns:"unit, packet, discrete amount",mem:"QUANT-UM — a QUANTITY so small it can't be divided further. The smallest chunk of something."},
+{t:"science",w:"Mitosis",ph:"/maɪˈtəʊ.sɪs/",pos:"noun",def:"The process by which a cell divides into two identical daughter cells.",ex:"During mitosis, each new cell receives a complete copy of the DNA.",syns:"cell division, replication",mem:"MY-TOSIS — MY cell divides into two cells that are both still ME."},
+{t:"science",w:"Gravity",ph:"/ˈɡræv.ɪ.ti/",pos:"noun",def:"The force that attracts bodies toward one another, proportional to their mass.",ex:"Without gravity, the atmosphere would drift off into space.",syns:"gravitation, attraction, pull",mem:"GRAVE-ity — things fall to their GRAVE because of gravity. It pulls everything down."},
+{t:"science",w:"Photosynthesis",ph:"/ˌfəʊ.təʊˈsɪn.θɪ.sɪs/",pos:"noun",def:"The process by which plants use sunlight, water, and CO₂ to produce oxygen and energy.",ex:"Forests perform photosynthesis on a massive scale, cleaning the air.",syns:"carbon fixation, energy conversion",mem:"PHOTO-SYNTHESIS — PHOTO = light, SYNTHESIS = making. Plants MAKE food from LIGHT."},
+{t:"science",w:"Plasma",ph:"/ˈplæz.mə/",pos:"noun",def:"The fourth state of matter; an ionised gas of protons and electrons.",ex:"The sun is made almost entirely of plasma.",syns:"ionised gas, charged gas",mem:"PLASMA screen TV — the light comes from ionised plasma gas inside each pixel."},
+{t:"science",w:"Fossil",ph:"/ˈfɒs.əl/",pos:"noun",def:"The remains or impression of a prehistoric organism preserved in rock.",ex:"The fossil record shows that dinosaurs disappeared 66 million years ago.",syns:"relic, remains, imprint",mem:"FOSS-IL — FOSSA is Latin for ditch or pit. Fossils are dug out of pits in the earth."},
+{t:"science",w:"Chromosome",ph:"/ˈkrəʊ.mə.səʊm/",pos:"noun",def:"A thread-like structure of DNA and protein that carries genetic information.",ex:"Humans have 46 chromosomes arranged in 23 pairs.",syns:"DNA strand, genetic structure",mem:"CHROMO-SOME — CHROMA means colour. Chromosomes were named because they absorb coloured stains under a microscope."},
+/* EVERYDAY */
+{t:"everyday",w:"Candid",ph:"/ˈkæn.dɪd/",pos:"adjective",def:"Truthful and straightforward; frank in expression.",ex:"She gave a candid assessment of the project's weaknesses.",syns:"frank, honest, direct",mem:"CAND-ID — CANDID camera catches people being themselves, completely honest and unposed."},
+{t:"everyday",w:"Frugal",ph:"/ˈfruː.ɡəl/",pos:"adjective",def:"Sparing or economical with money or food; not wasteful.",ex:"His frugal habits allowed him to retire at 45.",syns:"thrifty, economical, careful with money",mem:"FRU-GAL — a FRUGAL person never splurges. They say 'frugal is FRUGAL' when the bill comes."},
+{t:"everyday",w:"Resilient",ph:"/rɪˈzɪl.i.ənt/",pos:"adjective",def:"Able to recover quickly from difficult conditions.",ex:"Despite the setbacks, she remained resilient and rebuilt her career.",syns:"tough, adaptable, hardy",mem:"RE-SILIENT — RE means again. A resilient person SILENTLY bounces back again and again."},
+{t:"everyday",w:"Procrastinate",ph:"/prəˈkræs.tɪ.neɪt/",pos:"verb",def:"To delay or postpone action; to put off doing something.",ex:"He procrastinated all week and now the deadline is tomorrow.",syns:"delay, defer, postpone",mem:"PRO-CRASTI-NATE — pro CRAS (tomorrow). In Latin, CRAS means tomorrow. You're always doing it tomorrow."},
+{t:"everyday",w:"Empathy",ph:"/ˈem.pə.θi/",pos:"noun",def:"The ability to understand and share the feelings of another person.",ex:"Good leaders show empathy toward team members under stress.",syns:"compassion, understanding, sensitivity",mem:"EM-PATHY — EM means into, PATHOS means feeling. You step INTO someone else's feelings."},
+{t:"everyday",w:"Concise",ph:"/kənˈsaɪs/",pos:"adjective",def:"Giving a lot of information clearly and in few words; brief but comprehensive.",ex:"Her concise summary covered all the key points in three sentences.",syns:"brief, succinct, compact",mem:"CON-CISE — to CUT (incise) away all the extra words. Short and sharp like scissors."},
+{t:"everyday",w:"Tenacious",ph:"/tɪˈneɪ.ʃəs/",pos:"adjective",def:"Holding firmly to something; not giving up easily; persistent.",ex:"Her tenacious approach to job hunting finally paid off.",syns:"persistent, determined, stubborn",mem:"TEN-ACIOUS — TEN fingers grip tightly. Tenacious means holding on with all ten fingers."},
+{t:"everyday",w:"Spontaneous",ph:"/spɒnˈteɪ.ni.əs/",pos:"adjective",def:"Performed or occurring as a result of a sudden impulse, without planning.",ex:"They made a spontaneous decision to drive to the coast.",syns:"impulsive, unplanned, impromptu",mem:"SPON-TAN-EOUS — like a SPONGE soaking up the moment, acting without a plan."},
+{t:"everyday",w:"Integrity",ph:"/ɪnˈteɡ.rɪ.ti/",pos:"noun",def:"The quality of being honest and having strong moral principles.",ex:"She was known throughout the industry for her absolute integrity.",syns:"honesty, honour, ethics",mem:"IN-TEGER-ITY — an INTEGER is a whole number, never broken. Integrity means being whole, never broken by dishonesty."},
+{t:"everyday",w:"Versatile",ph:"/ˈvɜː.sə.taɪl/",pos:"adjective",def:"Able to adapt or be adapted to many different functions or activities.",ex:"A versatile cook can make a delicious meal from almost any ingredients.",syns:"adaptable, flexible, all-round",mem:"VERSA-TILE — you can VERSE (turn) any TILE (situation) to your advantage. Adaptable!"},
+{t:"everyday",w:"Diligent",ph:"/ˈdɪl.ɪ.dʒənt/",pos:"adjective",def:"Having or showing care and effort in your work; hardworking.",ex:"Diligent revision is the most reliable path to exam success.",syns:"hardworking, conscientious, thorough",mem:"DILI-GENT — a DILIGENT GENT is always working hard, never slacking off."},
+{t:"everyday",w:"Implicit",ph:"/ɪmˈplɪs.ɪt/",pos:"adjective",def:"Suggested or understood without being directly stated.",ex:"There was an implicit agreement that no one would discuss the incident.",syns:"implied, unspoken, tacit",mem:"IM-PLICIT — IM means in; something folded IN. The meaning is folded inside, not said aloud."},
+{t:"everyday",w:"Proactive",ph:"/ˌprəʊˈæk.tɪv/",pos:"adjective",def:"Creating or controlling a situation rather than just responding to it.",ex:"Being proactive about your health means exercising before you get sick.",syns:"anticipatory, forward-thinking, initiative-taking",mem:"PRO-ACTIVE — PRO means before. Acting BEFORE something happens rather than reacting after."},
+{t:"everyday",w:"Subtle",ph:"/ˈsʌt.əl/",pos:"adjective",def:"So delicate or precise as to be difficult to perceive or describe.",ex:"There was a subtle change in her tone that only a close friend would notice.",syns:"delicate, understated, nuanced",mem:"SUB-TLE — SUB means under. A subtle thing is hidden UNDER the surface, hard to see."},
+{t:"everyday",w:"Genuine",ph:"/ˈdʒen.ju.ɪn/",pos:"adjective",def:"Truly what something is said to be; authentic; sincere.",ex:"His apology seemed genuine rather than forced.",syns:"authentic, real, sincere",mem:"GENU-INE — GENUS means origin/birth. Something GENUINE comes from its true origin, not fake."}
+];
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let topic = "all";
+let pool  = [];
+let seen  = new Set();
+let cur   = null;
+let mode  = "learn"; // "learn" | "quiz"
+let quizType = ""; // "spell" | "define" | "use"
+let session = {ok:0, err:0, streak:0};
+let recognition = null;
+let synth = window.speechSynthesis;
+let listening = false;
+let speaking  = false;
+
+const $ = id => document.getElementById(id);
+
+/* ── build pool ── */
+function buildPool() {
+  pool = topic === "all" ? [...WORDS] : WORDS.filter(w => w.t === topic);
+  seen.clear();
+}
+buildPool();
+
+/* ── pick next word ── */
+function nextWord() {
+  const unseen = pool.filter(w => !seen.has(w.w));
+  if (!unseen.length) { seen.clear(); }
+  const fresh = pool.filter(w => !seen.has(w.w));
+  const idx = Math.floor(Math.random() * fresh.length);
+  return fresh[idx];
+}
+
+/* ═══════════════════════════════════════════════════
+   STATUS / LOG
+═══════════════════════════════════════════════════ */
+function setStatus(state, txt) {
+  $("sdot").className = "sdot" + (state ? " "+state : "");
+  $("stxt").textContent = txt;
+}
+
+function addLog(role, txt) {
+  const log = $("log");
+  log.style.display = "flex";
+  const d = document.createElement("div");
+  d.className = "lmsg " + (role === "ag" ? "ag" : "us");
+  d.innerHTML = `<b>${role === "ag" ? "Tutor" : "You"}:</b> ${txt}`;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+/* ═══════════════════════════════════════════════════
+   SPEECH SYNTHESIS
+═══════════════════════════════════════════════════ */
+function speak(txt, onDone) {
+  if (!synth) { onDone && onDone(); return; }
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(txt);
+  u.rate = 0.93; u.pitch = 1.02;
+  speaking = true;
+  setStatus("speak", "Speaking…");
+  u.onend = u.onerror = () => {
+    speaking = false;
+    if (mode !== "quiz") setStatus("", 'Say a command or tap "Ask something"');
+    else setStatus("", "Listening for your quiz answer…");
+    $("btnmic").disabled = false;
+    onDone && onDone();
+  };
+  synth.speak(u);
+}
+
+/* ═══════════════════════════════════════════════════
+   WORD DISPLAY
+═══════════════════════════════════════════════════ */
+function showWord(w) {
+  cur = w;
+  seen.add(w.w);
+  mode = "learn";
+  $("quiz-area").style.display = "none";
+  $("card").style.display = "flex";
+  $("card").className = "card";
+
+  $("cword").textContent = w.w; $("cword").className = "cword";
+  $("cphon").textContent = w.ph;
+  $("cpos").textContent  = w.pos; $("cpos").style.display = "inline-block";
+  $("cdef").textContent  = w.def;
+  $("cex").textContent   = "\""+w.ex+"\""; $("cex").style.display = "block";
+  $("csyns").textContent = "Synonyms: "+w.syns; $("csyns").style.display = "block";
+  $("cmnem").textContent = "💡 "+w.mem; $("cmnem").style.display = "block";
+
+  $("btnspk").style.display = "";
+  $("hints").style.display = "flex";
+  updateScore();
+  setStatus("", 'Say a command or tap "Ask something"');
+  $("btnmic").disabled = false;
+
+  const intro = `Your word is: ${w.w}. ${w.ph}. ${w.pos}. ${w.def}. Here's an example: ${w.ex}. Memory tip: ${w.mem}`;
+  addLog("ag", `<b>${w.w}</b> — ${w.def}`);
+  speak(intro);
+}
+
+function loadNewWord() {
+  if (!cur) {
+    $("cword").textContent = "…";
+    $("cword").className = "cword shim";
+  }
+  $("log").innerHTML = ""; $("log").style.display = "none";
+  $("quiz-area").style.display = "none";
+  $("card").style.display = "flex";
+  $("card").className = "card";
+  $("hints").style.display = "none";
+  $("btnnew").disabled = true;
+  $("btnmic").disabled = true;
+  setStatus("think", "Picking a word…");
+  setTimeout(() => { showWord(nextWord()); $("btnnew").disabled = false; }, 300);
+}
+
+/* ═══════════════════════════════════════════════════
+   QUIZ MODE
+═══════════════════════════════════════════════════ */
+const QUIZ_TYPES = [
+  { type:"spell",  prompt: w => `How do you spell "${w.w}"? Type or say it letter by letter.` },
+  { type:"define", prompt: w => `I'll give you the definition — what's the word?\n"${w.def}"` },
+  { type:"use",    prompt: w => `Use the word "${w.w}" in a sentence.` }
+];
+
+function startQuiz() {
+  if (!cur) { speak("Please load a word first."); return; }
+  mode = "quiz";
+  const qt = QUIZ_TYPES[Math.floor(Math.random() * QUIZ_TYPES.length)];
+  quizType = qt.type;
+  const prompt = qt.prompt(cur);
+
+  $("card").style.display = "none";
+  $("quiz-area").style.display = "block";
+  $("qprompt").textContent = prompt;
+  $("qinput").value = "";
+  $("qfb").textContent = "";
+  $("qfb").className = "quiz-feedback";
+  $("quiz-card").className = "card";
+  setStatus("", "Answer the question — type or speak");
+  addLog("ag", prompt);
+  speak(prompt, () => { $("qinput").focus(); });
+}
+
+function checkQuizAnswer(ans) {
+  if (!ans.trim()) return;
+  ans = ans.trim().toLowerCase();
+  addLog("us", ans);
+  let correct = false;
+
+  if (quizType === "spell") {
+    const cleaned = ans.replace(/[\s\.\-]/g,"");
+    correct = cleaned === cur.w.toLowerCase();
+  } else if (quizType === "define") {
+    correct = ans.includes(cur.w.toLowerCase()) ||
+              cur.syns.toLowerCase().split(",").some(s => ans.includes(s.trim()));
+  } else if (quizType === "use") {
+    correct = ans.includes(cur.w.toLowerCase()) ||
+              cur.syns.toLowerCase().split(",").some(s => ans.includes(s.trim()));
+  }
+
+  if (correct) {
+    session.ok++; session.streak++;
+    $("quiz-card").className = "card flash-ok";
+    $("qfb").textContent = "✓ Correct! Well done.";
+    $("qfb").className = "quiz-feedback ok";
+    addLog("ag", `✓ Correct! The word is "${cur.w}".`);
+    speak(`Correct! Great job! The answer is ${cur.w}.`, () => {
+      setTimeout(() => { mode = "learn"; $("card").style.display="flex"; $("quiz-area").style.display="none"; updateScore(); }, 800);
+    });
+  } else {
+    session.err++; session.streak = 0;
+    $("quiz-card").className = "card flash-err";
+    const hint = `Not quite. ${quizType === "spell" ? "The word is spelled: " + cur.w.split("").join("-") + "." : "The word is " + cur.w + ". " + cur.def}`;
+    $("qfb").textContent = "✗ " + hint;
+    $("qfb").className = "quiz-feedback err";
+    addLog("ag", hint);
+    speak(hint, () => {
+      setTimeout(() => { mode = "learn"; $("card").style.display="flex"; $("quiz-area").style.display="none"; updateScore(); }, 1200);
+    });
+  }
+  updateScore();
+}
+
+/* ═══════════════════════════════════════════════════
+   COMMAND PARSER — no AI, pure JS
+═══════════════════════════════════════════════════ */
+function handleCommand(raw) {
+  if (!raw.trim()) return;
+  const t = raw.toLowerCase().trim();
+  addLog("us", raw);
+
+  // quiz answer mode
+  if (mode === "quiz") {
+    $("qinput").value = raw;
+    checkQuizAnswer(raw);
+    return;
+  }
+
+  if (!cur) {
+    if (/new|start|word|begin/.test(t)) { loadNewWord(); return; }
+    speak("Say 'new word' to get started!"); return;
+  }
+
+  // commands
+  if (/next|new word|skip|another/.test(t))          { loadNewWord(); return; }
+  if (/quiz|test|challenge/.test(t))                  { startQuiz(); return; }
+  if (/repeat|again|say it again|hear again/.test(t)) {
+    speak(`${cur.w}. ${cur.def}. ${cur.ex}.`);
+    addLog("ag", `Repeating: ${cur.w}`); return;
+  }
+  if (/example|sentence|use it/.test(t)) {
+    const r = `Here's an example: ${cur.ex}`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/synonym|related|similar|also called/.test(t)) {
+    const r = `Synonyms for ${cur.w}: ${cur.syns}.`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/memory|tip|mnemonic|remember|trick/.test(t)) {
+    const r = `Memory tip: ${cur.mem}`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/mean|definition|define|what is/.test(t)) {
+    const r = `${cur.w} means: ${cur.def}`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/spell|letters|spelling/.test(t)) {
+    const r = `${cur.w} is spelled: ${cur.w.split("").join(", ")}.`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/pronun|say it|phonetic|how.*say/.test(t)) {
+    const r = `${cur.w} is pronounced: ${cur.ph}. ${cur.w}.`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/part.*speech|what.*type|noun|verb|adj/.test(t)) {
+    const r = `${cur.w} is a ${cur.pos}.`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/score|how.*doing|progress/.test(t)) {
+    const tot = session.ok+session.err;
+    const pct = tot>0 ? Math.round(session.ok/tot*100) : 0;
+    const r = `You've answered ${session.ok} correctly out of ${tot} total. That's ${pct}%. Current streak: ${session.streak}.`;
+    addLog("ag", r); speak(r); return;
+  }
+  if (/help|command|what can|options/.test(t)) {
+    $("overlay").classList.add("open"); return;
+  }
+
+  // fallback — echo the word info
+  const r = `I'm not sure about that. The current word is ${cur.w}: ${cur.def}. Try saying 'quiz me', 'example', or 'next word'.`;
+  addLog("ag", r); speak(r);
+}
+
+/* ═══════════════════════════════════════════════════
+   SCORE
+═══════════════════════════════════════════════════ */
+function updateScore() {
+  const tot = session.ok + session.err;
+  const pct = tot > 0 ? Math.round(session.ok / tot * 100) : 0;
+  $("cok").textContent  = `✓ ${session.ok} correct`;
+  $("cerr").textContent = `✗ ${session.err} wrong`;
+  $("cstr").textContent = `🔥 ${session.streak} streak`;
+  $("ctot").textContent = `📚 ${seen.size} seen`;
+  $("pgfil").style.width   = pct + "%";
+  $("pglbl").textContent   = `${pct}% correct`;
+}
+
+/* ═══════════════════════════════════════════════════
+   SPEECH RECOGNITION
+═══════════════════════════════════════════════════ */
+function initSR() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { $("nospeech").style.display = "block"; $("btnmic").style.display = "none"; return; }
+  recognition = new SR();
+  recognition.lang = "en-US";
+  recognition.interimResults  = false;
+  recognition.maxAlternatives = 1;
+  recognition.continuous      = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    setStatus("listen", "Listening… speak now");
+    $("btnmic").innerHTML = '<i class="ti ti-microphone-off"></i> Stop';
+  };
+  recognition.onresult = e => {
+    const txt = e.results[0][0].transcript;
+    listening = false;
+    $("btnmic").innerHTML = '<i class="ti ti-microphone"></i> Ask something';
+    handleCommand(txt);
+  };
+  recognition.onerror = recognition.onend = () => {
+    if (!listening) return;
+    listening = false;
+    $("btnmic").innerHTML = '<i class="ti ti-microphone"></i> Ask something';
+    setStatus("", "Mic stopped. Try again.");
+    $("btnmic").disabled = false;
+  };
+}
+
+/* ═══════════════════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════════════════ */
+$("btnnew").addEventListener("click", loadNewWord);
+
+$("btnmic").addEventListener("click", () => {
+  if (!recognition) return;
+  if (listening)  { recognition.stop(); return; }
+  if (speaking)   synth.cancel();
+  try { recognition.start(); } catch(e) {}
+});
+
+$("btnspk").addEventListener("click", () => {
+  if (!cur) return;
+  speak(`${cur.w}. ${cur.ph}. ${cur.pos}. ${cur.def}. Example: ${cur.ex}`);
+});
+
+$("btnhelp").addEventListener("click", () => $("overlay").classList.add("open"));
+$("mclose").addEventListener("click",  () => $("overlay").classList.remove("open"));
+$("overlay").addEventListener("click", e => { if (e.target === $("overlay")) $("overlay").classList.remove("open"); });
+
+// topic pills
+document.querySelectorAll(".tpill").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tpill").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    topic = btn.dataset.t;
+    buildPool();
+    loadNewWord();
+  });
+});
+
+// quiz input — submit on Enter
+$("qinput").addEventListener("keydown", e => {
+  if (e.key === "Enter") checkQuizAnswer($("qinput").value);
+});
+
+/* ── init ── */
+initSR();
+updateScore();
+setStatus("", "Pick a topic and press 'New word' to begin");
+</script>
+</body>
+</html>
